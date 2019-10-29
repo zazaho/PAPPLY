@@ -1,0 +1,78 @@
+#!/usr/bin/python3
+'Apply a shell command in parallel by using a mulitprocessing.pool'
+import sys
+import os
+import subprocess
+from multiprocessing import Pool
+
+def papply_variables_from_argument(argument):
+    'Extract variables (directory, name,  extension) from the argument'
+
+    dirname = os.path.dirname(argument)
+    name_with_extension = os.path.basename(argument)
+    name_without_extension, extension = os.path.splitext(name_with_extension)
+
+    return {'%F' : argument,
+            '%d' : dirname,
+            '%f' : name_with_extension,
+            '%n' : name_without_extension,
+            '%e' : extension}
+
+def papply_one(argument):
+    'Apply the command to one argument'
+
+    # the original command passed on the command line
+    command = sys.argv[1]
+
+    # replace special strings with values
+    variables_from_argument = papply_variables_from_argument(argument)
+    command_expanded = command
+    for template, value in variables_from_argument.items():
+        command_expanded = command_expanded.replace(template, value)
+
+    # if the command is not expanded add the argument to the basic command
+    # otherwise assume that the command_expanded is complete
+    if command_expanded == command:
+        command_expanded = command+' '+argument
+
+    try:
+        reply = subprocess.check_output(command_expanded,
+                                        universal_newlines=True,
+                                        shell=True,
+                                        stderr=subprocess.DEVNULL)
+        # if there was output to stdout print it here
+        if reply:
+            print(reply.rstrip('\r\n'))
+    except subprocess.CalledProcessError:
+        # something went wrong inform the user
+        print('"%s" did not succeed' % command_expanded)
+
+
+def papply_main():
+    'Main routine of papply. It creates the multiprocessing pool.'
+
+    if len(sys.argv) < 3:
+        print('Usage: papply "some command with arguments" files')
+        print('Example: papply "gzip -9" *.ps')
+        print('')
+        print('The following variables can used in the command:')
+        print(' %F: Full original input')
+        print(' %d: directory name (no trailing slash)')
+        print(' %f: file name with extension')
+        print(' %n: file name without extension')
+        print(' %e: extension (with leading .)')
+        print('')
+        print('Example: papply "convert -set colorspace Gray %F %n_gray.jpg" *.ps')
+        sys.exit()
+
+    # sys.argv[1] is the command line to call in parallel
+    # anything after sys.argv[1] are arguments to this command line
+    arguments = sys.argv[2:]
+
+    pool = Pool()
+    pool.map(papply_one, arguments)
+    pool.close()
+    pool.join()
+
+if __name__ == '__main__':
+    papply_main()
