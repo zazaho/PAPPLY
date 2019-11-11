@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="papply", # Replace with your own username
-    version="0.1",
+    version="0.1.1",
     author="Sacha Hony",
     author_email="sachahony@gmail.com",
     description="Script to run command line programs in parallel",

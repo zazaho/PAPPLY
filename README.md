@@ -31,7 +31,7 @@ converting images to jpg using [ImageMagick's](https://imagemagick.org/index.php
 
 becomes:
 
-**papply \"convert %F %f.jpg\" \*.png**
+**papply \"convert %F %n.jpg\" \*.png**
 
 # Features
 ## Template replacements
