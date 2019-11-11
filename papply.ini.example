@@ -1,0 +1,10 @@
+# example of papply configuration file
+[papply]
+# number of cores to use, default all available cores
+num_cores = 4
+# how many threads per core to request, default 1
+overcommit_factor = 1
+# print progress of the running jobs (yes, no, iflong), default IfLong 
+show_progress = 'iflong'
+# time in seconds to be considered long after which progress is shown, default 60
+long_duration = 30
