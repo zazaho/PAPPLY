@@ -1,9 +1,10 @@
 #!/usr/bin/python3
-'Apply a shell command in parallel by using a mulitprocessing.pool'
+'Apply a shell command in parallel by using a multiprocessing.pool'
 import sys
 import os
 import subprocess
-from multiprocessing import Pool
+import time
+from multiprocessing import Pool, cpu_count
 
 def papply_variables_from_argument(argument):
     'Extract variables (directory, name,  extension) from the argument'
@@ -16,7 +17,8 @@ def papply_variables_from_argument(argument):
             '%d' : dirname,
             '%f' : name_with_extension,
             '%n' : name_without_extension,
-            '%e' : extension}
+            '%e' : extension,
+            '%z' : ''}
 
 def papply_one(argument):
     'Apply the command to one argument'
@@ -61,6 +63,7 @@ def papply_main():
         print(' %f: file name with extension')
         print(' %n: file name without extension')
         print(' %e: extension (with leading .)')
+        print(' %z: empty string')
         print('')
         print('Example: papply "convert -set colorspace Gray %F %n_gray.jpg" *.ps')
         sys.exit()
@@ -68,9 +71,33 @@ def papply_main():
     # sys.argv[1] is the command line to call in parallel
     # anything after sys.argv[1] are arguments to this command line
     arguments = sys.argv[2:]
+    narguments = len(arguments)
 
-    pool = Pool()
-    pool.map(papply_one, arguments)
+    num_cores = cpu_count()
+    # keep it nice and busy
+    overcommitment_value = 2
+    pool = Pool(num_cores*overcommitment_value)
+
+    # register when we start the pool
+    start_time = time.monotonic()
+    long_running = False
+
+    res = pool.imap(papply_one, arguments)
+
+    # Loop over the number of arguments to track the progress
+    for i in range(narguments):
+
+        # this continues when the iterated map has given the next result
+        dummy = res.next()
+
+        # when this starts to be a long running process print percentage (10%) progress
+        if long_running:
+            if (i / narguments * 100)%10 == 0:
+                print("PAPPLY: %s of %s commands executed" % (i, narguments))
+        else:
+            # check to see if it is long running
+            long_running = (time.monotonic() - start_time > 60) # seconds since start of pool
+
     pool.close()
     pool.join()
 
