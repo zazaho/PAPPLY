@@ -7,13 +7,15 @@ import time
 import configparser
 from multiprocessing import Pool, cpu_count
 
+
 def papply_get_configuration():
     '''Function to get configuration parameters from papply.ini.
     This file can be locate either in the current directory or the user home'''
 
     config = configparser.ConfigParser()
     if config.read(
-            [os.path.expanduser('./papply.ini'), os.path.expanduser('~/papply.ini')]
+            [os.path.expanduser('./papply.ini'),
+             os.path.expanduser('~/papply.ini')]
     ):
         default = config['papply']
         num_cores = default.getint('num_cores', cpu_count())
@@ -27,20 +29,23 @@ def papply_get_configuration():
         long_duration = 60
 
         # want to disable progress indication?
-    if show_progress in ['n', 'N', 'no', 'No', 'NO', '0', 'false', 'False', 'FALSE']:
+    if show_progress in ['n', 'N', 'no', 'No', 'NO',
+                         '0', 'false', 'False', 'FALSE']:
         bool_show_progress = False
     else:
         bool_show_progress = True
 
     # want to always enable progress indication?
-    if show_progress in ['y', 'Y', 'yes', 'Yes', 'YES', '1', 'true', 'True', 'TRUE']:
+    if show_progress in ['y', 'Y', 'yes', 'Yes', 'YES',
+                         '1', 'true', 'True', 'TRUE']:
         long_duration = 0
 
     return {
-        'num_threads':num_cores*overcommit_factor,
-        'show_progress':bool_show_progress,
-        'long_duration':long_duration
+        'num_threads': num_cores*overcommit_factor,
+        'show_progress': bool_show_progress,
+        'long_duration': long_duration
     }
+
 
 def papply_variables_from_argument(argument):
     'Extract variables (directory, name,  extension) from the argument'
@@ -49,12 +54,13 @@ def papply_variables_from_argument(argument):
     name_with_extension = os.path.basename(argument)
     name_without_extension, extension = os.path.splitext(name_with_extension)
 
-    return {'%F' : argument,
-            '%d' : dirname,
-            '%f' : name_with_extension,
-            '%n' : name_without_extension,
-            '%e' : extension,
-            '%z' : ''}
+    return {'%F': argument,
+            '%d': dirname,
+            '%f': name_with_extension,
+            '%n': name_without_extension,
+            '%e': extension,
+            '%z': ''}
+
 
 def papply_one(argument):
     'Apply the command to one argument'
@@ -120,25 +126,32 @@ def papply_main():
         start_time = time.monotonic()
         long_running = False
 
-        # iteration number that corresponds to a 10, 20, .., 90 step in progress
-        progress_marks = [int(x/100.0*narguments) for x in range(10, 100, 10)]
+        # iteration number that corresponds to
+        # 10, 20, .., 90 step in progress
+        progress_marks = [round(x/100.0*narguments)
+                          for x in range(10, 100, 10)]
 
         # Loop over the number of arguments to track the progress
         for i in range(narguments):
 
             # this continues when the iterated map has given the next result
-            dummy = res.next()
+            res.next()
 
-            # when this starts to be a long running process print percentage (10%) progress
+            # when this starts to be a long running process print percentage
+            # (10%) progress
             if long_running:
                 if i in progress_marks:
-                    print("PAPPLY: %s of %s commands executed" % (i, narguments))
+                    print("PAPPLY: %s of %s commands executed"
+                          % (i, narguments))
             else:
                 # check to see if it is long running
-                long_running = (time.monotonic() - start_time > config_values['long_duration'])
+                long_running = (
+                    time.monotonic() - start_time > config_values['long_duration']
+                )
 
     pool.close()
     pool.join()
+
 
 if __name__ == '__main__':
     papply_main()
