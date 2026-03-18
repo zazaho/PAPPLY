@@ -1,112 +1,104 @@
 #!/usr/bin/python3
-'Apply a shell command in parallel by using a multiprocessing.pool'
-import sys
-import os
-import subprocess
-import time
+"""Apply a shell command in parallel by using a multiprocessing.pool."""
 import configparser
+import subprocess
+import sys
+import time
+from copy import copy
 from multiprocessing import Pool, cpu_count
+from pathlib import Path
 
+_REQUIRED_NUMBER_OR_ARGS = 3
 
-def papply_get_configuration():
-    '''Function to get configuration parameters from papply.ini.
-    This file can be locate either in the current directory or the user home'''
+def _get_configuration() -> dict:
+    """Get configuration parameters from papply.ini.
 
+    This file can be locate either in the current directory or the user home
+    """
     config = configparser.ConfigParser()
-    if config.read(
-            [os.path.expanduser('./papply.ini'),
-             os.path.expanduser('~/papply.ini')]
-    ):
-        default = config['papply']
-        num_cores = default.getint('num_cores', cpu_count())
-        overcommit_factor = default.getint('overcommit_factor', 1)
-        show_progress = default.get('show_progress', 'iflong')
-        long_duration = default.getint('long_duration', 60)
+    if config.read([Path("./papply.ini"), Path("~/papply.ini").expanduser()]):
+        default = config["papply"]
+        num_cores = default.getint("num_cores", cpu_count())
+        overcommit_factor = default.getint("overcommit_factor", 1)
+        show_progress = default.get("show_progress", "iflong")
+        long_duration = default.getint("long_duration", 60)
     else:
         num_cores = cpu_count()
         overcommit_factor = 1
-        show_progress = 'iflong'
+        show_progress = "iflong"
         long_duration = 60
 
-        # want to disable progress indication?
-    if show_progress in ['n', 'N', 'no', 'No', 'NO',
-                         '0', 'false', 'False', 'FALSE']:
-        bool_show_progress = False
-    else:
-        bool_show_progress = True
+    # want to disable progress indication?
+    bool_show_progress = show_progress.lower() in ["n", "no", "0", "false"]
 
     # want to always enable progress indication?
-    if show_progress in ['y', 'Y', 'yes', 'Yes', 'YES',
-                         '1', 'true', 'True', 'TRUE']:
+    if show_progress.lower() in ["y", "yes", "1", "true"]:
         long_duration = 0
 
     return {
-        'num_threads': num_cores*overcommit_factor,
-        'show_progress': bool_show_progress,
-        'long_duration': long_duration
+        "num_threads": num_cores * overcommit_factor,
+        "show_progress": bool_show_progress,
+        "long_duration": long_duration,
     }
 
 
-def papply_variables_from_argument(argument):
-    'Extract variables (directory, name,  extension) from the argument'
-
-    dirname = os.path.dirname(argument)
-    name_with_extension = os.path.basename(argument)
-    name_without_extension, extension = os.path.splitext(name_with_extension)
-
-    return {'%F': argument,
-            '%d': dirname,
-            '%f': name_with_extension,
-            '%n': name_without_extension,
-            '%e': extension,
-            '%z': ''}
+def _get_variables_from_argument(argument: str) -> list[tuple[str, str]]:
+    """Extract variables (directory, name,  extension) from the argument."""
+    argument_path = Path(argument)
+    return [
+        ("%F", argument),
+        ("%d", str(argument_path.parents[0])),
+        ("%f", str(argument_path.name)),
+        ("%n", str(argument_path.stem)),
+        ("%e", str(argument_path.suffixes[-1])),
+        ("%z", ""),
+    ]
 
 
-def papply_one(argument):
-    'Apply the command to one argument'
-
+def _papply_one(argument: str) -> None:
+    """Apply the command to one argument."""
     # the original command passed on the command line
     command = sys.argv[1]
 
+    command_expanded = copy(command)
     # replace special strings with values
-    variables_from_argument = papply_variables_from_argument(argument)
-    command_expanded = command
-    for template, value in variables_from_argument.items():
+    for template, value in _get_variables_from_argument(argument):
         command_expanded = command_expanded.replace(template, value)
 
     # if the command is not expanded add the argument to the basic command
     # otherwise assume that the command_expanded is complete
     if command_expanded == command:
-        command_expanded = command+' '+argument
+        command_expanded = f'{command} "{argument}"'
 
     try:
-        reply = subprocess.check_output(command_expanded,
-                                        universal_newlines=True,
-                                        shell=True,
-                                        stderr=subprocess.DEVNULL)
+        reply = subprocess.check_output(
+            command_expanded,
+            universal_newlines=True,
+            shell=True,
+            stderr=subprocess.DEVNULL,
+        )
         # if there was output to stdout print it here
         if reply:
-            print(reply.rstrip('\r\n'))
+            print(reply.rstrip("\r\n"))
     except subprocess.CalledProcessError:
         # something went wrong inform the user
-        print('"%s" did not succeed' % command_expanded)
+        print(f'"{command_expanded}" did not succeed')
 
 
-def papply_main():
-    'Main routine of papply. It creates the multiprocessing pool.'
-
-    if len(sys.argv) < 3:
+def papply_main() -> None:
+    """Execute the main logic of papply. It creates the multiprocessing pool."""
+    if len(sys.argv) < _REQUIRED_NUMBER_OR_ARGS:
         print('Usage: papply "some command with arguments" files')
         print('Example: papply "gzip -9" *.ps')
-        print('')
-        print('The following variables can used in the command:')
-        print(' %F: Full original input')
-        print(' %d: directory name (no trailing slash)')
-        print(' %f: file name with extension')
-        print(' %n: file name without extension')
-        print(' %e: extension (with leading .)')
-        print(' %z: empty string')
-        print('')
+        print()
+        print("The following variables can used in the command:")
+        print(" %F: Full original input")
+        print(" %d: directory name (no trailing slash)")
+        print(" %f: file name with extension")
+        print(" %n: file name without extension")
+        print(" %e: extension (with leading .)")
+        print(" %z: empty string")
+        print()
         print('Example: papply "convert -set colorspace Gray %F %n_gray.jpg" *.ps')
         sys.exit()
 
@@ -115,21 +107,20 @@ def papply_main():
     arguments = sys.argv[2:]
     narguments = len(arguments)
 
-    config_values = papply_get_configuration()
+    config_values = _get_configuration()
 
-    pool = Pool(config_values['num_threads'])
+    pool = Pool(config_values["num_threads"])
+    res = pool.imap(_papply_one, arguments)
 
-    res = pool.imap(papply_one, arguments)
-
-    if config_values['show_progress']:
+    if config_values["show_progress"]:
         # register when we start the pool
         start_time = time.monotonic()
         long_running = False
+        long_duration = config_values["long_duration"]
 
         # iteration number that corresponds to
         # 10, 20, .., 90 step in progress
-        progress_marks = [round(x/100.0*narguments)
-                          for x in range(10, 100, 10)]
+        progress_marks = [round(x/100.0*narguments) for x in range(10, 100, 10)]
 
         # Loop over the number of arguments to track the progress
         for i in range(narguments):
@@ -141,17 +132,15 @@ def papply_main():
             # (10%) progress
             if long_running:
                 if i in progress_marks:
-                    print("PAPPLY: %s of %s commands executed"
-                          % (i, narguments))
-            else:
-                # check to see if it is long running
-                long_running = (
-                    time.monotonic() - start_time > config_values['long_duration']
-                )
+                    print(f"PAPPLY: {i} of {narguments} commands executed")
+                continue
+
+            # check to see if it is long running
+            long_running = time.monotonic() - start_time > long_duration
 
     pool.close()
     pool.join()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     papply_main()
