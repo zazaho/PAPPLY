@@ -62,7 +62,6 @@ def _apply_one(argument: str) -> None:
     # the original command passed on the command line
     command = sys.argv[1]
 
-    print(argument)
     command_expanded = copy(command)
     # replace special strings with values
     for template, value in _get_variables_from_argument(argument):
