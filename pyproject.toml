@@ -1,0 +1,32 @@
+[project]
+name = "papply"
+version = "0.1.3"
+description = "Script to run command line programs in parallel"
+authors = [
+    { name = "sacha", email = "sachahony@gmail.com" },
+    { name = "Sacha Hony", email = "zazahohonini@gmail.com" },
+]
+requires-python = ">=3"
+readme = "README.md"
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+]
+
+[project.license]
+text = "MIT"
+
+[project.urls]
+Homepage = "https://github.com/zazaho/PAPPLY"
+
+[project.scripts]
+papply = "papply:main"
+
+[build-system]
+requires = [
+    "pdm-backend",
+]
+build-backend = "pdm.backend"
+
+[tool]
