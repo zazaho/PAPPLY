@@ -57,7 +57,7 @@ def _get_variables_from_argument(argument: str) -> list[tuple[str, str]]:
     ]
 
 
-def _papply_one(argument: str) -> None:
+def _apply_one(argument: str) -> None:
     """Apply the command to one argument."""
     # the original command passed on the command line
     command = sys.argv[1]
@@ -88,7 +88,7 @@ def _papply_one(argument: str) -> None:
         print(f'"{command_expanded}" did not succeed')
 
 
-def papply_main() -> None:
+def main() -> None:
     """Execute the main logic of papply. It creates the multiprocessing pool."""
     if len(sys.argv) < _REQUIRED_NUMBER_OR_ARGS:
         print('Usage: papply "some command with arguments" files')
@@ -113,7 +113,7 @@ def papply_main() -> None:
     config_values = _get_configuration()
 
     pool = Pool(config_values["num_threads"])
-    res = pool.imap(_papply_one, arguments)
+    res = pool.imap(_apply_one, arguments)
 
     if config_values["show_progress"]:
         # register when we start the pool
@@ -146,4 +146,4 @@ def papply_main() -> None:
 
 
 if __name__ == "__main__":
-    papply_main()
+    main()

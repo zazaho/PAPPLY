@@ -21,12 +21,10 @@ text = "MIT"
 Homepage = "https://github.com/zazaho/PAPPLY"
 
 [project.scripts]
-papply = "papply:main"
+papply = "papply.papply:main"
 
 [build-system]
-requires = [
-    "pdm-backend",
-]
+requires = ["pdm-backend"]
 build-backend = "pdm.backend"
 
 [tool]
