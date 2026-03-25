@@ -42,30 +42,32 @@ def _get_configuration() -> dict:
     }
 
 
-def _get_variables_from_argument(argument: str) -> list[tuple[str, str]]:
-    """Extract variables (directory, name,  extension) from the argument."""
+def _replace_variables(command: str, argument: str) -> str:
+    """Replace template placeholders (directory, name, extension, ...) from the argument."""
+    if "%" not in command:
+        return command
+    command_expanded = copy(command)
     argument_path = Path(argument)
     dirname = str(argument_path.parents[0]) if argument_path.parents else ""
     extension = argument_path.suffixes[-1] if argument_path.suffixes else ""
-    return [
-        ("%F", argument),
-        ("%d", dirname),
-        ("%f", str(argument_path.name)),
-        ("%n", str(argument_path.stem)),
-        ("%e", extension),
-        ("%z", ""),
-    ]
+
+    for template, value in [
+            ("%F", argument),
+            ("%d", dirname),
+            ("%f", str(argument_path.name)),
+            ("%n", str(argument_path.stem)),
+            ("%e", extension),
+            ("%z", ""),
+    ]:
+        command_expanded = command_expanded.replace(template, value)
+    return command_expanded
 
 
 def _apply_one(argument: str) -> None:
     """Apply the command to one argument."""
     # the original command passed on the command line
     command = sys.argv[1]
-
-    command_expanded = copy(command)
-    # replace special strings with values
-    for template, value in _get_variables_from_argument(argument):
-        command_expanded = command_expanded.replace(template, value)
+    command_expanded = _replace_variables(command, argument)
 
     # if the command is not expanded add the argument to the basic command
     # otherwise assume that the command_expanded is complete

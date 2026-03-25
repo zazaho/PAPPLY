@@ -1,6 +1,6 @@
 [project]
 name = "papply"
-version = "0.1.4"
+version = "0.1.5"
 description = "Script to run command line programs in parallel"
 authors = [
     { name = "sacha", email = "sachahony@gmail.com" },
