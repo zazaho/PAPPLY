@@ -29,7 +29,7 @@ def _get_configuration() -> dict:
         long_duration = 60
 
     # want to disable progress indication?
-    bool_show_progress = show_progress.lower() in ["n", "no", "0", "false"]
+    bool_show_progress = show_progress.lower() not in ["n", "no", "0", "false"]
 
     # want to always enable progress indication?
     if show_progress.lower() in ["y", "yes", "1", "true"]:
@@ -113,34 +113,27 @@ def main() -> None:
 
     config_values = _get_configuration()
 
-    pool = Pool(config_values["num_threads"])
-    res = pool.imap(_apply_one, arguments)
-
+    # register when we consider the execution to take long
     if config_values["show_progress"]:
-        # register when we start the pool
-        start_time = time.monotonic()
-        long_running = False
-        long_duration = config_values["long_duration"]
-
+        if config_values["long_duration"] == 0:
+            long_running = True
+        else:
+            long_running = False
+            long_limit = time.monotonic() + config_values["long_duration"]
         # iteration number that corresponds to
         # 10, 20, .., 90 step in progress
         progress_marks = [round(x/100.0*narguments) for x in range(10, 100, 10)]
 
-        # Loop over the number of arguments to track the progress
-        for i in range(narguments):
+    pool = Pool(config_values["num_threads"])
+    for i, _ in enumerate(pool.imap(_apply_one, arguments)):
+        # when this starts to be a long running process print percentage
+        # (10%) progress
+        if config_values["show_progress"] and long_running and (i+1) in progress_marks:
+            print(f"PAPPLY: {i+1} of {narguments} commands executed")
 
-            # this continues when the iterated map has given the next result
-            res.next()
-
-            # when this starts to be a long running process print percentage
-            # (10%) progress
-            if long_running:
-                if i in progress_marks:
-                    print(f"PAPPLY: {i} of {narguments} commands executed")
-                continue
-
+        if config_values["show_progress"] and not long_running:
             # check to see if it is long running
-            long_running = time.monotonic() - start_time > long_duration
+            long_running = time.monotonic() > long_limit
 
     pool.close()
     pool.join()
