@@ -76,9 +76,8 @@ def _apply_one(argument: str) -> None:
 
     try:
         reply = subprocess.check_output(
-            command_expanded,
+            command_expanded.split(),
             universal_newlines=True,
-            shell=True,
             stderr=subprocess.DEVNULL,
         )
         # if there was output to stdout print it here
@@ -131,9 +130,8 @@ def main() -> None:
         if config_values["show_progress"] and long_running and (i+1) in progress_marks:
             print(f"PAPPLY: {i+1} of {narguments} commands executed")
 
-        if config_values["show_progress"] and not long_running:
-            # check to see if it is long running
-            long_running = time.monotonic() > long_limit
+        if config_values["show_progress"] and not long_running and time.monotonic() > long_limit:
+            long_running = True
 
     pool.close()
     pool.join()
