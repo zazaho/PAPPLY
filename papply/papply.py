@@ -72,11 +72,13 @@ def _apply_one(argument: str) -> None:
     # if the command is not expanded add the argument to the basic command
     # otherwise assume that the command_expanded is complete
     if command_expanded == command:
-        command_expanded = f'{command} "{argument}"'
-
+        command_list = command.split() + [argument]
+    else:
+        command_list = command_expanded.split()
+        
     try:
         reply = subprocess.check_output(
-            command_expanded.split(),
+            command_list,
             universal_newlines=True,
             stderr=subprocess.DEVNULL,
         )
