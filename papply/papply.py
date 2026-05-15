@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 """Apply a shell command in parallel by using a multiprocessing.pool."""
 import configparser
+import os
 import subprocess
 import sys
 import time
@@ -63,6 +64,26 @@ def _replace_variables(command: str, argument: str) -> str:
     return command_expanded
 
 
+def _get_environment_from_command_list(
+        command_list: list[str]
+) -> tuple[list[str], dict[str,str]]:
+    """Assuming that any "commands" that contain "=" are instructions
+    to set the environment before running the command, output the
+    actual command list and its environment.
+    """
+
+    new_env = {}
+    for idx, command in enumerate(command_list):
+        if "=" in command:
+            key_val = command.split("=", maxsplit=1)
+            new_env[key_val[0]] = key_val[1]
+        else:
+            remaining_command_list = command_list[idx:]
+            break
+
+    return remaining_command_list, os.environ | new_env
+
+            
 def _apply_one(argument: str) -> None:
     """Apply the command to one argument."""
     # the original command passed on the command line
@@ -76,12 +97,15 @@ def _apply_one(argument: str) -> None:
         command_list = command.split() + [argument]
     else:
         command_list = command_expanded.split()
-        
+
+    command_list, env_dict = _get_environment_from_command_list(command_list)
+    
     try:
         reply = subprocess.check_output(
             command_list,
             universal_newlines=True,
             stderr=subprocess.DEVNULL,
+            env=env_dict,
         )
         # if there was output to stdout print it here
         if reply:
